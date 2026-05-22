@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Redesign — SPEKW Laminates</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; padding: 24px; }
+  h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 4px; }
+  .sub { color: #888; font-size: 0.85rem; margin-bottom: 28px; }
+  .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 0.85rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+  .upload-area { border: 2px dashed #333; border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+  .upload-area:hover { border-color: #555; }
+  .upload-area.has-image { border-color: #4ade80; border-style: solid; padding: 0; overflow: hidden; }
+  .upload-area img { width: 100%; max-height: 280px; object-fit: cover; display: block; border-radius: 6px; }
+  .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+  .upload-text { color: #666; font-size: 0.9rem; }
+  input[type=file] { display: none; }
+  .styles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .style-btn { background: #222; border: 2px solid #333; border-radius: 8px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .style-btn:hover { border-color: #555; }
+  .style-btn.active { border-color: #4ade80; background: #1a2e1a; }
+  .style-btn .emoji { font-size: 1.4rem; display: block; margin-bottom: 4px; }
+  .style-btn .name { font-size: 0.75rem; font-weight: 600; }
+  .style-btn .desc { font-size: 0.65rem; color: #666; margin-top: 2px; }
+  .btn { width: 100%; padding: 14px; background: #4ade80; color: #000; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+  .btn:hover { opacity: 0.9; }
+  .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+  .status { text-align: center; padding: 16px; color: #888; font-size: 0.9rem; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #333; border-top-color: #4ade80; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .result-img { width: 100%; border-radius: 8px; display: block; }
+  .download-btn { display: block; width: 100%; padding: 12px; background: #222; border: 1px solid #333; border-radius: 8px; color: #4ade80; text-align: center; text-decoration: none; font-size: 0.9rem; margin-top: 12px; cursor: pointer; }
+  .error { color: #f87171; font-size: 0.85rem; padding: 12px; background: #1f1010; border-radius: 8px; border: 1px solid #3f1515; }
+  .laminates { display: flex; gap: 10px; }
+  .laminate { flex: 1; border-radius: 6px; padding: 10px; font-size: 0.75rem; }
+  .l1 { background: #f5f0e8; color: #333; }
+  .l2 { background: #4a5568; color: #fff; }
+  .laminate strong { display: block; font-size: 0.8rem; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<h1>Room Redesign</h1>
+<p class="sub">Upload your room photo — AI will apply the SPEKW laminates to your actual cupboards</p>
+
+<div class="card">
+  <h2>Laminate Palette</h2>
+  <div class="laminates">
+    <div class="laminate l1">
+      <strong>RUA-123</strong>
+      Cream / Pearl White<br>Brushed silk finish
+    </div>
+    <div class="laminate l2">
+      <strong>RUA-120</strong>
+      Slate Grey<br>Brushed silk finish
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Your Room Photo</h2>
+  <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📷</div>
+    <div class="upload-text">Tap to upload your room photo</div>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
+</div>
+
+<div class="card">
+  <h2>Wall Colour Style</h2>
+  <div class="styles">
+    <div class="style-btn active" onclick="selectStyle(this, 'warm')" id="s-warm">
+      <span class="emoji">🤍</span>
+      <div class="name">Warm Greige</div>
+      <div class="desc">Soft & classic</div>
+    </div>
+    <div class="style-btn" onclick="selectStyle(this, 'dark')" id="s-dark">
+      <span class="emoji">🖤</span>
+      <div class="name">Dark Drama</div>
+      <div class="desc">Bold & moody</div>
+    </div>
+    <div class="style-btn" onclick="selectStyle(this, 'japandi')" id="s-japandi">
+      <span class="emoji">🪴</span>
+      <div class="name">Japandi</div>
+      <div class="desc">Minimal & serene</div>
+    </div>
+  </div>
+</div>
+
+<button class="btn" id="genBtn" onclick="generate()" disabled>Generate Redesign</button>
+
+<div class="status" id="status" style="display:none"></div>
+
+<div class="card" id="resultCard" style="display:none">
+  <h2>Redesigned Room</h2>
+  <img id="resultImg" class="result-img" alt="Redesigned room">
+  <a id="downloadLink" class="download-btn" download="redesign.png">⬇ Download Image</a>
+</div>
+
+<script>
+const API_KEY = 'AIzaSyBFgjKomkkM_CxsuhHGA3xyCOs5X_nn_6M';
+let imageBase64 = null;
+let imageMime = null;
+let selectedStyle = 'warm';
+
+const STYLE_PROMPTS = {
+  warm: `Apply WARM GREIGE wall colour (similar to Dulux Pebble Shore — a soft beige-grey) to all walls.
+Add a king-size platform bed with cream bouclé headboard, ivory linen bedding, dusty blue throw, brushed gold pendant lights, jute rug.`,
+  dark: `Apply DEEP CHARCOAL wall colour (near-black, like Farrow & Ball Railings) to all walls.
+Add a king bed with tall navy tufted velvet headboard, champagne gold silk throw, brushed gold arc floor lamps, dark grey plush rug.`,
+  japandi: `Apply WARM OFF-WHITE wall colour (Swiss Coffee tone) to all walls.
+Add a low floor-platform king bed in natural walnut, cream boucle headboard, white linen bedding, grey throw, ceramic table lamps, a monstera plant in terracotta pot.`
+};
+
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  imageMime = file.type;
+  const reader = new FileReader();
+  reader.onload = e => {
+    imageBase64 = e.target.result.split(',')[1];
+    const area = document.getElementById('uploadArea');
+    area.className = 'upload-area has-image';
+    area.innerHTML = `<img src="${e.target.result}" alt="Room photo">`;
+    document.getElementById('genBtn').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+function selectStyle(el, style) {
+  document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedStyle = style;
+}
+
+function buildPrompt() {
+  return `You are a photorealistic interior design visualisation expert.
+
+TASK: Look at the room photo provided. This is a bedroom under construction.
+Redesign it into a COMPLETED luxury master bedroom by applying the following finishes to the EXISTING cupboard/wardrobe structure — do NOT change the room layout, wall positions, or cupboard structure.
+
+LAMINATE FINISHES TO APPLY:
+• All wardrobe door faces, overhead loft cabinet doors, and bookshelf shelf fronts:
+  → SPEKW RUA-123: warm cream / pearl white brushed silk laminate — soft silky sheen, warm ivory-white tone with subtle horizontal brush texture
+• Accent panels — TV niche back panel, vertical divider grooves on wardrobe, bookshelf back panels:
+  → SPEKW RUA-120: brushed dark slate grey laminate — cool charcoal with slight steel-blue undertone, metallic silk finish
+• Hardware: brushed satin gold / brass handles
+
+WALL AND FURNITURE:
+${STYLE_PROMPTS[selectedStyle]}
+
+IMPORTANT RULES:
+- Keep the EXACT same room geometry, same wardrobe position, same door position, same ceiling, same marble floor
+- The white marble floor must remain visible and reflective
+- The false ceiling with LED cove strip lighting must remain
+- Only change: laminate finish on cupboards, wall colour, add furniture and decor
+- Final result must look like a photorealistic completed luxury bedroom
+- 4K quality, sharp focus, interior design magazine aesthetic`;
+}
+
+async function generate() {
+  if (!imageBase64) return;
+
+  const btn = document.getElementById('genBtn');
+  const status = document.getElementById('status');
+  const resultCard = document.getElementById('resultCard');
+
+  btn.disabled = true;
+  resultCard.style.display = 'none';
+  status.style.display = 'block';
+  status.innerHTML = '<span class="spinner"></span>Sending your room to Gemini AI...';
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: buildPrompt() },
+              { inlineData: { mimeType: imageMime, data: imageBase64 } }
+            ]
+          }],
+          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error?.message || `API error ${response.status}`);
+    }
+
+    let imageData = null;
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData) {
+        imageData = part.inlineData.data;
+        break;
+      }
+    }
+
+    if (!imageData) {
+      throw new Error('No image returned. Try again or use a clearer room photo.');
+    }
+
+    const imgSrc = `data:image/png;base64,${imageData}`;
+    document.getElementById('resultImg').src = imgSrc;
+    document.getElementById('downloadLink').href = imgSrc;
+    resultCard.style.display = 'block';
+    status.style.display = 'none';
+
+  } catch (err) {
+    status.innerHTML = `<div class="error">❌ ${err.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
