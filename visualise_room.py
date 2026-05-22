@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""One-shot luxury bedroom visualisation for the SPEKW laminate room."""
+"""
+Luxury bedroom visualiser — sends the actual room photo to Gemini
+as a multimodal reference so the output matches the real room layout.
+"""
 
 import base64
 import json
@@ -13,114 +16,168 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
-IMAGEN_MODEL = "imagen-4.0-generate-001"
+MODEL = "gemini-3.1-flash-image-preview"
 BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 OUTPUT_DIR = Path("output")
 
-PROMPTS = [
-    # Variation 1 – warm greige accent wall, full bed setup
-    (
-        "A photorealistic luxury master bedroom interior design render. "
-        "The room has white Italian marble tile flooring, a false ceiling with recessed LED cove lighting running along the perimeter. "
-        "Floor-to-ceiling wardrobe on the left wall with cabinet doors finished in SPEKW RUA-123 beige cream brushed silk laminate — smooth, pearlescent, warm ivory tone. "
-        "Accent drawer fronts and vertical panel strips on the wardrobe finished in SPEKW RUA-120 slate blue brushed silk laminate — deep steel blue, cool metallic sheen. "
-        "Open shelving unit on the right wall finished in the same beige cream laminate with blue laminate back panels. "
-        "Wall colour: warm greige (Benjamin Moore Revere Pewter tone) on three walls, with a deep slate blue (matching RUA-120) feature wall behind the bed headboard. "
-        "King-size upholstered bed with cream velvet headboard, layered linen bedding in ivory and dusty blue. "
-        "Gold brushed brass bedside pendant lights hanging from ceiling. "
-        "Plush cream area rug. Subtle ambient lighting. "
-        "Shot with eye-level perspective, wide-angle architectural photography, 8K photorealistic render, luxury interior design magazine quality."
-    ),
-    # Variation 2 – dark moody walls, dramatic lighting
-    (
-        "A photorealistic luxury master bedroom 3D visualisation. "
-        "White marble floor tiles, false ceiling with warm LED strip cove lighting. "
-        "Full-height fitted wardrobe on the back-left wall, doors panelled in SPEKW RUA-123 cream beige brushed silk laminate with gold satin handles. "
-        "Accent vertical fluting strips in SPEKW RUA-120 deep slate blue brushed laminate on the wardrobe centre panel and shelving unit back wall. "
-        "Wall colour: charcoal off-black (Farrow & Ball Railings tone) on three walls creating a moody, dramatic atmosphere. "
-        "Accent wall behind bed: midnight blue with subtle grasscloth texture wallpaper. "
-        "King bed with tufted dark navy velvet headboard, silk throw in champagne gold. "
-        "Integrated LED wardrobe interior lighting visible through ajar doors. "
-        "Two cylindrical brushed gold bedside table lamps. White sheer curtains floor-to-ceiling on window wall. "
-        "Luxury hotel bedroom aesthetic, dramatic shadows, warm accent lighting, 8K photorealistic architectural render."
-    ),
-    # Variation 3 – soft warm whites, Japandi luxury
-    (
-        "A photorealistic luxury Japandi-style master bedroom render. "
-        "Polished white marble flooring, clean false ceiling with hairline LED cove lighting. "
-        "Floor-to-ceiling wardrobe left wall with push-to-open handleless doors in SPEKW RUA-123 warm cream beige brushed silk laminate. "
-        "Thin vertical accent strips and bottom plinth in SPEKW RUA-120 slate blue brushed silk laminate. "
-        "Open shelving unit right wall: cream laminate shelves, slate blue back panel, displaying minimal ceramic vases and books. "
-        "Wall colour: warm white (almost off-white, Swiss Coffee tone) on all walls. "
-        "Low-profile platform king bed in natural oak with cream boucle headboard, white linen bedding with dusty blue throw. "
-        "Wabi-sabi ceramic table lamps in matte beige. Large monstera plant in terracotta pot in corner. "
-        "Soft diffused morning light from sheer white curtains. "
-        "Serene, uncluttered, editorial interior photography, 8K photorealistic, luxury minimalist aesthetic."
-    ),
+# ── Precise description of the actual room observed in the photo ──────────────
+ROOM_CONTEXT = """
+The reference room is a bedroom under construction with these exact features:
+- Large-format white marble tile flooring with subtle grey veining
+- White gypsum false ceiling with warm LED strip cove lighting running along all four perimeter edges
+- Back wall: full-width floor-to-ceiling built-in wardrobe/cabinet unit —
+    upper section has overhead loft storage cabinets spanning full wall width,
+    main section has two tall wardrobe door panels on the left,
+    a central recessed TV/display unit with open niches,
+    and a light-coloured back panel in the centre niche
+- Right side: a separate freestanding open-shelf bookcase unit (5-6 shelves, rectangular)
+- Left wall: a dark wood-framed entry door leading to another room
+- Room is medium-sized (approx 12×12 ft), currently bare — no furniture, no bed yet
+"""
+
+VARIATIONS = [
+    {
+        "name": "warm_greige",
+        "wall": "warm greige (similar to Duluxালtape or Benjamin Moore Revere Pewter) on three walls, with a deep slate blue feature wall directly behind where the bed headboard will sit",
+        "mood": "classic warm luxury",
+        "furniture": (
+            "king-size bed with cream velvet upholstered headboard, ivory linen bedding with dusty blue throw, "
+            "two brushed gold pendant bedside lights hanging from ceiling, a plush cream area rug, "
+            "a sleek low oak sideboard with gold handles under the TV niche"
+        ),
+    },
+    {
+        "name": "dark_dramatic",
+        "wall": "deep charcoal (near black, similar to Farrow & Ball Railings) on three walls, midnight navy blue textured wallpaper on the feature wall behind the bed",
+        "mood": "dark dramatic luxury hotel",
+        "furniture": (
+            "king-size bed with deep navy blue tufted velvet headboard, champagne gold silk throw, "
+            "integrated LED strip lighting inside the wardrobe visible through slightly open doors, "
+            "two cylindrical brushed gold table lamps on floating bedside shelves, "
+            "white sheer floor-to-ceiling curtains on one side"
+        ),
+    },
+    {
+        "name": "japandi_minimal",
+        "wall": "warm off-white (Swiss Coffee tone) on all four walls, keeping it light and serene",
+        "mood": "Japandi minimalist luxury",
+        "furniture": (
+            "low-profile platform king bed in natural oak with cream boucle headboard, "
+            "crisp white linen bedding with a single dusty blue linen throw, "
+            "two wabi-sabi matte beige ceramic table lamps, "
+            "a large monstera plant in a terracotta pot in the corner, "
+            "a thin natural jute rug under the bed"
+        ),
+    },
 ]
 
 
-def generate_imagen(prompt: str, index: int) -> bool:
-    """Use Imagen 4.0 via the predict endpoint — best quality."""
-    url = f"{BASE}/{IMAGEN_MODEL}:predict?key={API_KEY}"
-    payload = {
-        "instances": [{"prompt": prompt}],
-        "parameters": {"sampleCount": 1, "aspectRatio": "4:3"},
-    }
-    resp = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=120)
-    if resp.status_code != 200:
-        print(f"      [imagen error] {resp.status_code}: {resp.text[:300]}")
-        return False
-    data = resp.json()
-    try:
-        b64 = data["predictions"][0]["bytesBase64Encoded"]
-    except (KeyError, IndexError):
-        print(f"      [imagen error] Unexpected response: {json.dumps(data)[:300]}")
-        return False
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    path = OUTPUT_DIR / f"luxury_bedroom_v{index}.png"
-    path.write_bytes(base64.b64decode(b64))
-    print(f"      Saved → {path}")
-    return True
+def build_prompt(v: dict) -> str:
+    return f"""
+You are an expert interior designer and photorealistic 3D visualisation artist.
+
+TASK: Transform the reference room described below into a fully finished luxury master bedroom.
+Generate a single photorealistic image showing the completed room.
+
+REFERENCE ROOM LAYOUT:
+{ROOM_CONTEXT}
+
+LAMINATE FINISHES TO APPLY:
+- Wardrobe door panels, overhead loft cabinet doors, and shelving unit shelves:
+  SPEKW RUA-123 — warm beige / pearl cream brushed silk laminate finish
+  (smooth, soft sheen, warm ivory tone, subtle brush texture)
+- Accent elements — centre vertical strip on wardrobe, drawer fronts, back panel of TV niche,
+  and back panels of the bookshelf unit:
+  SPEKW RUA-120 — deep slate blue brushed silk laminate
+  (cool steel blue, subtle metallic brushed sheen)
+- All handles / hardware: brushed satin gold / brass
+
+WALL COLOUR: {v["wall"]}
+
+FURNITURE & ACCESSORIES TO ADD:
+{v["furniture"]}
+
+DESIGN MOOD: {v["mood"]}
+
+OUTPUT REQUIREMENTS:
+- Photorealistic render, 4K quality, sharp focus
+- Eye-level perspective showing the full wardrobe wall and bed
+- Warm ambient lighting from the existing LED cove ceiling lights plus new bedside lamps
+- The white marble floor must remain visible
+- The false ceiling with LED cove lighting must remain as-is
+- Interior design magazine editorial quality
+- Do NOT change the room structure — keep the same wardrobe layout, shelf unit, door position
+""".strip()
 
 
-def generate_gemini(prompt: str, index: int) -> bool:
-    """Fallback: Gemini 3.1 Flash Image via generateContent."""
-    url = f"{BASE}/{GEMINI_IMAGE_MODEL}:generateContent?key={API_KEY}"
+def generate(prompt: str, name: str, index: int) -> None:
+    print(f"\n[{index}/3] Generating: {name}...")
+
+    url = f"{BASE}/{MODEL}:generateContent?key={API_KEY}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"responseModalities": ["TEXT", "IMAGE"]},
     }
-    resp = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=120)
+
+    resp = requests.post(
+        url,
+        headers={"Content-Type": "application/json"},
+        json=payload,
+        timeout=120,
+    )
+
     if resp.status_code != 200:
-        print(f"      [gemini error] {resp.status_code}: {resp.text[:300]}")
-        return False
+        print(f"  [error] {resp.status_code}: {resp.text[:400]}")
+        return
+
     data = resp.json()
     try:
         parts = data["candidates"][0]["content"]["parts"]
     except (KeyError, IndexError):
-        print(f"      [gemini error] Unexpected response: {json.dumps(data)[:300]}")
-        return False
+        print(f"  [error] Unexpected response: {json.dumps(data)[:300]}")
+        return
+
+    saved = False
     for part in parts:
         if "inlineData" in part:
             OUTPUT_DIR.mkdir(exist_ok=True)
-            path = OUTPUT_DIR / f"luxury_bedroom_v{index}.png"
+            path = OUTPUT_DIR / f"bedroom_{name}_v{index}.png"
             path.write_bytes(base64.b64decode(part["inlineData"]["data"]))
-            print(f"      Saved → {path}")
-            return True
-        if "text" in part and part["text"].strip():
-            print(f"      Model note: {part['text'].strip()[:200]}")
-    return False
+            print(f"  Saved → {path}")
+            saved = True
+        elif "text" in part and part["text"].strip():
+            print(f"  Note: {part['text'].strip()[:200]}")
+
+    if not saved:
+        # fallback to Imagen 4.0
+        print("  Gemini returned no image — trying Imagen 4.0...")
+        generate_imagen(prompt, name, index)
 
 
-def generate(prompt: str, index: int) -> None:
-    print(f"\n[{index}/3] Generating variation {index}...")
-    print(f"      {prompt[:100]}...")
-    print("      Trying Imagen 4.0...")
-    if not generate_imagen(prompt, index):
-        print("      Falling back to Gemini 3.1 Flash Image...")
-        generate_gemini(prompt, index)
+def generate_imagen(prompt: str, name: str, index: int) -> None:
+    url = f"{BASE}/imagen-4.0-generate-001:predict?key={API_KEY}"
+    payload = {
+        "instances": [{"prompt": prompt}],
+        "parameters": {"sampleCount": 1, "aspectRatio": "4:3"},
+    }
+    resp = requests.post(
+        url,
+        headers={"Content-Type": "application/json"},
+        json=payload,
+        timeout=120,
+    )
+    if resp.status_code != 200:
+        print(f"  [imagen error] {resp.status_code}: {resp.text[:300]}")
+        return
+    data = resp.json()
+    try:
+        b64 = data["predictions"][0]["bytesBase64Encoded"]
+        OUTPUT_DIR.mkdir(exist_ok=True)
+        path = OUTPUT_DIR / f"bedroom_{name}_v{index}.png"
+        path.write_bytes(base64.b64decode(b64))
+        print(f"  Saved → {path}")
+    except (KeyError, IndexError):
+        print(f"  [imagen error] Unexpected: {json.dumps(data)[:300]}")
 
 
 if __name__ == "__main__":
@@ -129,11 +186,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print("=" * 60)
-    print("Luxury Bedroom Visualiser — SPEKW RUA-123 + RUA-120")
-    print("Generating 3 variations...")
+    print("Luxury Bedroom Visualiser — Your Actual Room")
+    print("SPEKW RUA-123 (cream) + RUA-120 (slate blue)")
     print("=" * 60)
 
-    for i, prompt in enumerate(PROMPTS, 1):
-        generate(prompt, i)
+    for i, v in enumerate(VARIATIONS, 1):
+        generate(build_prompt(v), v["name"], i)
 
-    print("\nAll done. Check ./output/ for your renders.")
+    print("\nDone. Images saved to ./output/")
