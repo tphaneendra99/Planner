@@ -3,166 +3,232 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Room Redesign — SPEKW Laminates</title>
+<title>Room Redesign — AI Interior Designer</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; padding: 24px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; padding: 24px; max-width: 680px; margin: 0 auto; }
   h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 4px; }
   .sub { color: #888; font-size: 0.85rem; margin-bottom: 28px; }
   .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
-  .card h2 { font-size: 0.85rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
-  .upload-area { border: 2px dashed #333; border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+  .card h2 { font-size: 0.8rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+
+  /* upload areas */
+  .upload-area { border: 2px dashed #333; border-radius: 8px; padding: 28px 16px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
   .upload-area:hover { border-color: #555; }
-  .upload-area.has-image { border-color: #4ade80; border-style: solid; padding: 0; overflow: hidden; }
-  .upload-area img { width: 100%; max-height: 280px; object-fit: cover; display: block; border-radius: 6px; }
-  .upload-icon { font-size: 2rem; margin-bottom: 8px; }
-  .upload-text { color: #666; font-size: 0.9rem; }
+  .upload-area.has-image { border-color: #4ade80; border-style: solid; padding: 0; overflow: hidden; border-radius: 8px; }
+  .upload-area.has-image img { width: 100%; max-height: 260px; object-fit: cover; display: block; }
+  .upload-icon { font-size: 1.8rem; margin-bottom: 6px; }
+  .upload-text { color: #666; font-size: 0.85rem; }
   input[type=file] { display: none; }
-  .styles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-  .style-btn { background: #222; border: 2px solid #333; border-radius: 8px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
-  .style-btn:hover { border-color: #555; }
-  .style-btn.active { border-color: #4ade80; background: #1a2e1a; }
-  .style-btn .emoji { font-size: 1.4rem; display: block; margin-bottom: 4px; }
-  .style-btn .name { font-size: 0.75rem; font-weight: 600; }
-  .style-btn .desc { font-size: 0.65rem; color: #666; margin-top: 2px; }
-  .btn { width: 100%; padding: 14px; background: #4ade80; color: #000; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+
+  /* laminate grid */
+  .lam-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .lam-slot { position: relative; }
+  .lam-upload { border: 2px dashed #333; border-radius: 8px; overflow: hidden; cursor: pointer; aspect-ratio: 4/3; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: border-color 0.2s; }
+  .lam-upload:hover { border-color: #555; }
+  .lam-upload.has-image { border-color: #4ade80; border-style: solid; padding: 0; }
+  .lam-upload.has-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lam-upload .upload-icon { font-size: 1.4rem; margin-bottom: 4px; }
+  .lam-upload .upload-text { color: #666; font-size: 0.75rem; text-align: center; padding: 0 8px; }
+  .lam-label { font-size: 0.75rem; color: #aaa; margin-top: 6px; text-align: center; }
+  .lam-clear { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.6); border: none; color: #fff; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; cursor: pointer; display: none; align-items: center; justify-content: center; }
+  .lam-slot.has-img .lam-clear { display: flex; }
+
+  /* prompt textarea */
+  textarea { width: 100%; background: #111; border: 1px solid #333; border-radius: 8px; color: #f0f0f0; font-size: 0.9rem; padding: 12px; resize: vertical; min-height: 110px; font-family: inherit; line-height: 1.5; outline: none; transition: border-color 0.2s; }
+  textarea:focus { border-color: #4ade80; }
+  textarea::placeholder { color: #444; }
+  .char-hint { font-size: 0.72rem; color: #555; margin-top: 6px; text-align: right; }
+
+  /* buttons */
+  .btn { width: 100%; padding: 14px; background: #4ade80; color: #000; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; margin-bottom: 16px; }
   .btn:hover { opacity: 0.9; }
-  .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
-  .status { text-align: center; padding: 16px; color: #888; font-size: 0.9rem; }
-  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #333; border-top-color: #4ade80; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+  .btn:disabled { background: #2a2a2a; color: #555; cursor: not-allowed; }
+
+  /* status */
+  .status { text-align: center; padding: 16px; color: #888; font-size: 0.9rem; margin-bottom: 16px; }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #333; border-top-color: #4ade80; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* result */
   .result-img { width: 100%; border-radius: 8px; display: block; }
-  .download-btn { display: block; width: 100%; padding: 12px; background: #222; border: 1px solid #333; border-radius: 8px; color: #4ade80; text-align: center; text-decoration: none; font-size: 0.9rem; margin-top: 12px; cursor: pointer; }
+  .download-btn { display: block; width: 100%; padding: 12px; background: #111; border: 1px solid #333; border-radius: 8px; color: #4ade80; text-align: center; text-decoration: none; font-size: 0.9rem; margin-top: 12px; cursor: pointer; font-weight: 600; }
   .error { color: #f87171; font-size: 0.85rem; padding: 12px; background: #1f1010; border-radius: 8px; border: 1px solid #3f1515; }
-  .laminates { display: flex; gap: 10px; }
-  .laminate { flex: 1; border-radius: 6px; padding: 10px; font-size: 0.75rem; }
-  .l1 { background: #f5f0e8; color: #333; }
-  .l2 { background: #4a5568; color: #fff; }
-  .laminate strong { display: block; font-size: 0.8rem; margin-bottom: 2px; }
+  .note { font-size: 0.75rem; color: #555; margin-top: 10px; line-height: 1.5; }
 </style>
 </head>
 <body>
 
-<h1>Room Redesign</h1>
-<p class="sub">Upload your room photo — AI will apply the SPEKW laminates to your actual cupboards</p>
+<h1>AI Room Redesign</h1>
+<p class="sub">Upload your room + laminate samples — Gemini will redesign using your actual images</p>
 
+<!-- Room photo -->
 <div class="card">
-  <h2>Laminate Palette</h2>
-  <div class="laminates">
-    <div class="laminate l1">
-      <strong>RUA-123</strong>
-      Cream / Pearl White<br>Brushed silk finish
-    </div>
-    <div class="laminate l2">
-      <strong>RUA-120</strong>
-      Slate Grey<br>Brushed silk finish
-    </div>
-  </div>
-</div>
-
-<div class="card">
-  <h2>Your Room Photo</h2>
-  <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-    <div class="upload-icon">📷</div>
+  <h2>Room Photo</h2>
+  <div class="upload-area" id="roomArea" onclick="document.getElementById('roomFile').click()">
+    <div class="upload-icon">🏠</div>
     <div class="upload-text">Tap to upload your room photo</div>
   </div>
-  <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
+  <input type="file" id="roomFile" accept="image/*" onchange="handleRoom(this)">
 </div>
 
+<!-- Laminate images -->
 <div class="card">
-  <h2>Wall Colour Style</h2>
-  <div class="styles">
-    <div class="style-btn active" onclick="selectStyle(this, 'warm')" id="s-warm">
-      <span class="emoji">🤍</span>
-      <div class="name">Warm Greige</div>
-      <div class="desc">Soft & classic</div>
+  <h2>Laminate Sample Images <span style="color:#555;font-weight:400;text-transform:none;font-size:0.75rem">(optional — upload photos of your samples)</span></h2>
+  <div class="lam-grid">
+
+    <div class="lam-slot" id="slot0">
+      <div class="lam-upload" id="lam0" onclick="document.getElementById('lamFile0').click()">
+        <div class="upload-icon">🪵</div>
+        <div class="upload-text">Laminate 1<br>(e.g. cream / beige)</div>
+      </div>
+      <input type="file" id="lamFile0" accept="image/*" onchange="handleLam(this,0)">
+      <button class="lam-clear" onclick="clearLam(0)">✕</button>
+      <div class="lam-label" id="lamLabel0">Laminate 1</div>
     </div>
-    <div class="style-btn" onclick="selectStyle(this, 'dark')" id="s-dark">
-      <span class="emoji">🖤</span>
-      <div class="name">Dark Drama</div>
-      <div class="desc">Bold & moody</div>
+
+    <div class="lam-slot" id="slot1">
+      <div class="lam-upload" id="lam1" onclick="document.getElementById('lamFile1').click()">
+        <div class="upload-icon">🪵</div>
+        <div class="upload-text">Laminate 2<br>(e.g. grey / dark)</div>
+      </div>
+      <input type="file" id="lamFile1" accept="image/*" onchange="handleLam(this,1)">
+      <button class="lam-clear" onclick="clearLam(1)">✕</button>
+      <div class="lam-label" id="lamLabel1">Laminate 2</div>
     </div>
-    <div class="style-btn" onclick="selectStyle(this, 'japandi')" id="s-japandi">
-      <span class="emoji">🪴</span>
-      <div class="name">Japandi</div>
-      <div class="desc">Minimal & serene</div>
+
+    <div class="lam-slot" id="slot2">
+      <div class="lam-upload" id="lam2" onclick="document.getElementById('lamFile2').click()">
+        <div class="upload-icon">🪵</div>
+        <div class="upload-text">Laminate 3<br>(optional)</div>
+      </div>
+      <input type="file" id="lamFile2" accept="image/*" onchange="handleLam(this,2)">
+      <button class="lam-clear" onclick="clearLam(2)">✕</button>
+      <div class="lam-label" id="lamLabel2">Laminate 3</div>
     </div>
+
+    <div class="lam-slot" id="slot3">
+      <div class="lam-upload" id="lam3" onclick="document.getElementById('lamFile3').click()">
+        <div class="upload-icon">🪵</div>
+        <div class="upload-text">Laminate 4<br>(optional)</div>
+      </div>
+      <input type="file" id="lamFile3" accept="image/*" onchange="handleLam(this,3)">
+      <button class="lam-clear" onclick="clearLam(3)">✕</button>
+      <div class="lam-label" id="lamLabel3">Laminate 4</div>
+    </div>
+
   </div>
+  <p class="note">Upload photos of your physical laminate samples. Gemini will match the exact colour and texture from your photos.</p>
+</div>
+
+<!-- Free-text prompt -->
+<div class="card">
+  <h2>Design Instructions</h2>
+  <textarea id="promptBox" placeholder="Describe what you want — e.g:
+
+Apply the cream laminate on all wardrobe doors and the grey laminate on accent panels. Add a warm greige wall colour. Style it as a luxury master bedroom with a king bed, gold hardware, and soft ambient lighting."></textarea>
+  <div class="char-hint">Be as specific as you like — wall colour, furniture, mood, lighting, style</div>
 </div>
 
 <button class="btn" id="genBtn" onclick="generate()" disabled>Generate Redesign</button>
-
 <div class="status" id="status" style="display:none"></div>
 
 <div class="card" id="resultCard" style="display:none">
-  <h2>Redesigned Room</h2>
+  <h2>Result</h2>
   <img id="resultImg" class="result-img" alt="Redesigned room">
   <a id="downloadLink" class="download-btn" download="redesign.png">⬇ Download Image</a>
 </div>
 
 <script>
 const API_KEY = 'AIzaSyBFgjKomkkM_CxsuhHGA3xyCOs5X_nn_6M';
-let imageBase64 = null;
-let imageMime = null;
-let selectedStyle = 'warm';
 
-const STYLE_PROMPTS = {
-  warm: `Apply WARM GREIGE wall colour (similar to Dulux Pebble Shore — a soft beige-grey) to all walls.
-Add a king-size platform bed with cream bouclé headboard, ivory linen bedding, dusty blue throw, brushed gold pendant lights, jute rug.`,
-  dark: `Apply DEEP CHARCOAL wall colour (near-black, like Farrow & Ball Railings) to all walls.
-Add a king bed with tall navy tufted velvet headboard, champagne gold silk throw, brushed gold arc floor lamps, dark grey plush rug.`,
-  japandi: `Apply WARM OFF-WHITE wall colour (Swiss Coffee tone) to all walls.
-Add a low floor-platform king bed in natural walnut, cream boucle headboard, white linen bedding, grey throw, ceramic table lamps, a monstera plant in terracotta pot.`
-};
+let room = null; // { base64, mime }
+let lams = [null, null, null, null]; // laminate slots
 
-function handleFile(input) {
+function handleRoom(input) {
   const file = input.files[0];
   if (!file) return;
-  imageMime = file.type;
-  const reader = new FileReader();
-  reader.onload = e => {
-    imageBase64 = e.target.result.split(',')[1];
-    const area = document.getElementById('uploadArea');
+  readImage(file, data => {
+    room = data;
+    const area = document.getElementById('roomArea');
     area.className = 'upload-area has-image';
-    area.innerHTML = `<img src="${e.target.result}" alt="Room photo">`;
-    document.getElementById('genBtn').disabled = false;
-  };
+    area.innerHTML = `<img src="data:${data.mime};base64,${data.base64}" alt="Room">`;
+    checkReady();
+  });
+}
+
+function handleLam(input, idx) {
+  const file = input.files[0];
+  if (!file) return;
+  readImage(file, data => {
+    lams[idx] = data;
+    const el = document.getElementById(`lam${idx}`);
+    el.className = 'lam-upload has-image';
+    el.innerHTML = `<img src="data:${data.mime};base64,${data.base64}" alt="Laminate ${idx+1}">`;
+    document.getElementById(`slot${idx}`).classList.add('has-img');
+    document.getElementById(`lamLabel${idx}`).textContent = file.name.replace(/\.[^.]+$/, '');
+  });
+}
+
+function clearLam(idx) {
+  lams[idx] = null;
+  const el = document.getElementById(`lam${idx}`);
+  el.className = 'lam-upload';
+  el.innerHTML = `<div class="upload-icon">🪵</div><div class="upload-text">Laminate ${idx+1}<br>(optional)</div>`;
+  document.getElementById(`slot${idx}`).classList.remove('has-img');
+  document.getElementById(`lamFile${idx}`).value = '';
+  document.getElementById(`lamLabel${idx}`).textContent = `Laminate ${idx + 1}`;
+}
+
+function readImage(file, cb) {
+  const reader = new FileReader();
+  reader.onload = e => cb({ base64: e.target.result.split(',')[1], mime: file.type });
   reader.readAsDataURL(file);
 }
 
-function selectStyle(el, style) {
-  document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  selectedStyle = style;
+function checkReady() {
+  document.getElementById('genBtn').disabled = !room;
 }
 
-function buildPrompt() {
-  return `You are a photorealistic interior design visualisation expert.
+function buildParts() {
+  const userPrompt = document.getElementById('promptBox').value.trim();
+  const lamCount = lams.filter(Boolean).length;
 
-TASK: Look at the room photo provided. This is a bedroom under construction.
-Redesign it into a COMPLETED luxury master bedroom by applying the following finishes to the EXISTING cupboard/wardrobe structure — do NOT change the room layout, wall positions, or cupboard structure.
+  let systemText = `You are an expert photorealistic interior design visualisation artist.
 
-LAMINATE FINISHES TO APPLY:
-• All wardrobe door faces, overhead loft cabinet doors, and bookshelf shelf fronts:
-  → SPEKW RUA-123: warm cream / pearl white brushed silk laminate — soft silky sheen, warm ivory-white tone with subtle horizontal brush texture
-• Accent panels — TV niche back panel, vertical divider grooves on wardrobe, bookshelf back panels:
-  → SPEKW RUA-120: brushed dark slate grey laminate — cool charcoal with slight steel-blue undertone, metallic silk finish
-• Hardware: brushed satin gold / brass handles
+TASK: Redesign the room shown in the first image into a completed luxury interior.
+- Keep the EXACT same room structure, wall positions, cupboard layout, ceiling, and floor
+- Apply the laminate finishes shown in the provided laminate sample image(s) to the cupboards/wardrobes
+- Do NOT change room geometry or furniture structure — only add finishes, colour, and furnishing`;
 
-WALL AND FURNITURE:
-${STYLE_PROMPTS[selectedStyle]}
+  if (lamCount > 0) {
+    systemText += `\n- Match the exact colour and texture from the laminate sample photos when applying to the cupboard surfaces`;
+  }
 
-IMPORTANT RULES:
-- Keep the EXACT same room geometry, same wardrobe position, same door position, same ceiling, same marble floor
-- The white marble floor must remain visible and reflective
-- The false ceiling with LED cove strip lighting must remain
-- Only change: laminate finish on cupboards, wall colour, add furniture and decor
-- Final result must look like a photorealistic completed luxury bedroom
-- 4K quality, sharp focus, interior design magazine aesthetic`;
+  if (userPrompt) {
+    systemText += `\n\nADDITIONAL DESIGN INSTRUCTIONS FROM USER:\n${userPrompt}`;
+  }
+
+  systemText += `\n\nRENDER QUALITY: Photorealistic, 4K, sharp focus, interior design magazine quality. The result must look like a completed, furnished room — not a construction site.`;
+
+  const parts = [{ text: systemText }];
+
+  // first image = room photo
+  parts.push({ inlineData: { mimeType: room.mime, data: room.base64 } });
+
+  // laminate images
+  lams.forEach((lam, i) => {
+    if (lam) {
+      parts.push({ text: `Laminate sample ${i + 1} — apply this exact colour and texture to the cupboard surfaces as instructed:` });
+      parts.push({ inlineData: { mimeType: lam.mime, data: lam.base64 } });
+    }
+  });
+
+  return parts;
 }
 
 async function generate() {
-  if (!imageBase64) return;
+  if (!room) return;
 
   const btn = document.getElementById('genBtn');
   const status = document.getElementById('status');
@@ -171,7 +237,7 @@ async function generate() {
   btn.disabled = true;
   resultCard.style.display = 'none';
   status.style.display = 'block';
-  status.innerHTML = '<span class="spinner"></span>Sending your room to Gemini AI...';
+  status.innerHTML = '<span class="spinner"></span>Sending images to Gemini AI — this takes 20–40 seconds…';
 
   try {
     const response = await fetch(
@@ -180,12 +246,7 @@ async function generate() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: buildPrompt() },
-              { inlineData: { mimeType: imageMime, data: imageBase64 } }
-            ]
-          }],
+          contents: [{ parts: buildParts() }],
           generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
         })
       }
@@ -197,17 +258,15 @@ async function generate() {
       throw new Error(data.error?.message || `API error ${response.status}`);
     }
 
-    let imageData = null;
     const parts = data?.candidates?.[0]?.content?.parts || [];
+    let imageData = null;
     for (const part of parts) {
-      if (part.inlineData) {
-        imageData = part.inlineData.data;
-        break;
-      }
+      if (part.inlineData) { imageData = part.inlineData.data; break; }
     }
 
     if (!imageData) {
-      throw new Error('No image returned. Try again or use a clearer room photo.');
+      const textPart = parts.find(p => p.text);
+      throw new Error(textPart?.text || 'No image returned. Try simplifying your prompt or use a clearer room photo.');
     }
 
     const imgSrc = `data:image/png;base64,${imageData}`;
