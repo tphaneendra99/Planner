@@ -38,7 +38,7 @@
   textarea { width: 100%; background: #111; border: 1px solid #333; border-radius: 8px; color: #f0f0f0; font-size: 0.9rem; padding: 12px; resize: vertical; min-height: 110px; font-family: inherit; line-height: 1.5; outline: none; transition: border-color 0.2s; }
   textarea:focus { border-color: #4ade80; }
   textarea::placeholder { color: #444; }
-  .char-hint { font-size: 0.72rem; color: #555; margin-top: 6px; text-align: right; }
+  .char-hint { font-size: 0.72rem; color: #555; margin-top: 6px; }
 
   /* buttons */
   .btn { width: 100%; padding: 14px; background: #4ade80; color: #000; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; margin-bottom: 16px; }
@@ -55,12 +55,38 @@
   .download-btn { display: block; width: 100%; padding: 12px; background: #111; border: 1px solid #333; border-radius: 8px; color: #4ade80; text-align: center; text-decoration: none; font-size: 0.9rem; margin-top: 12px; cursor: pointer; font-weight: 600; }
   .error { color: #f87171; font-size: 0.85rem; padding: 12px; background: #1f1010; border-radius: 8px; border: 1px solid #3f1515; }
   .note { font-size: 0.75rem; color: #555; margin-top: 10px; line-height: 1.5; }
+
+  /* API key row */
+  .key-row { display: flex; gap: 8px; align-items: center; }
+  .key-input { flex: 1; background: #111; border: 1px solid #333; border-radius: 8px; color: #f0f0f0; font-size: 0.85rem; padding: 10px 12px; font-family: monospace; outline: none; transition: border-color 0.2s; }
+  .key-input:focus { border-color: #4ade80; }
+  .key-input::placeholder { color: #444; font-family: inherit; }
+  .key-toggle { background: #222; border: 1px solid #333; border-radius: 8px; color: #888; font-size: 0.8rem; padding: 10px 12px; cursor: pointer; white-space: nowrap; }
+  .key-toggle:hover { border-color: #555; color: #ccc; }
+  .key-status { font-size: 0.72rem; margin-top: 6px; }
+  .key-status.saved { color: #4ade80; }
+  .key-status.empty { color: #555; }
+  .key-forget { background: none; border: none; color: #555; font-size: 0.72rem; cursor: pointer; text-decoration: underline; margin-left: 8px; }
+  .key-forget:hover { color: #f87171; }
+  .model-badge { display: inline-block; background: #1e2a1e; border: 1px solid #2d4a2d; color: #4ade80; font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; margin-left: 6px; font-family: monospace; vertical-align: middle; }
 </style>
 </head>
 <body>
 
-<h1>AI Room Redesign</h1>
+<h1>AI Room Redesign <span class="model-badge">gemini-3.1-flash-image</span></h1>
 <p class="sub">Upload your room + laminate samples — Gemini will redesign using your actual images</p>
+
+<!-- API Key -->
+<div class="card">
+  <h2>Gemini API Key</h2>
+  <div class="key-row">
+    <input type="password" class="key-input" id="apiKeyInput" placeholder="Paste your Google AI Studio API key (AIza…)" oninput="onKeyInput()">
+    <button class="key-toggle" onclick="toggleKeyVis()">Show</button>
+  </div>
+  <div class="key-status empty" id="keyStatus">
+    No key saved — get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#4ade80">aistudio.google.com/apikey</a>
+  </div>
+</div>
 
 <!-- Room photo -->
 <div class="card">
@@ -74,9 +100,8 @@
 
 <!-- Laminate images -->
 <div class="card">
-  <h2>Laminate Sample Images <span style="color:#555;font-weight:400;text-transform:none;font-size:0.75rem">(optional — upload photos of your samples)</span></h2>
+  <h2>Laminate Sample Images <span style="color:#555;font-weight:400;text-transform:none;font-size:0.75rem">(optional)</span></h2>
   <div class="lam-grid">
-
     <div class="lam-slot" id="slot0">
       <div class="lam-upload" id="lam0" onclick="document.getElementById('lamFile0').click()">
         <div class="upload-icon">🪵</div>
@@ -86,7 +111,6 @@
       <button class="lam-clear" onclick="clearLam(0)">✕</button>
       <div class="lam-label" id="lamLabel0">Laminate 1</div>
     </div>
-
     <div class="lam-slot" id="slot1">
       <div class="lam-upload" id="lam1" onclick="document.getElementById('lamFile1').click()">
         <div class="upload-icon">🪵</div>
@@ -96,27 +120,24 @@
       <button class="lam-clear" onclick="clearLam(1)">✕</button>
       <div class="lam-label" id="lamLabel1">Laminate 2</div>
     </div>
-
     <div class="lam-slot" id="slot2">
       <div class="lam-upload" id="lam2" onclick="document.getElementById('lamFile2').click()">
         <div class="upload-icon">🪵</div>
-        <div class="upload-text">Laminate 3<br>(optional)</div>
+        <div class="upload-text">Laminate 3 (optional)</div>
       </div>
       <input type="file" id="lamFile2" accept="image/*" onchange="handleLam(this,2)">
       <button class="lam-clear" onclick="clearLam(2)">✕</button>
       <div class="lam-label" id="lamLabel2">Laminate 3</div>
     </div>
-
     <div class="lam-slot" id="slot3">
       <div class="lam-upload" id="lam3" onclick="document.getElementById('lamFile3').click()">
         <div class="upload-icon">🪵</div>
-        <div class="upload-text">Laminate 4<br>(optional)</div>
+        <div class="upload-text">Laminate 4 (optional)</div>
       </div>
       <input type="file" id="lamFile3" accept="image/*" onchange="handleLam(this,3)">
       <button class="lam-clear" onclick="clearLam(3)">✕</button>
       <div class="lam-label" id="lamLabel3">Laminate 4</div>
     </div>
-
   </div>
   <p class="note">Upload photos of your physical laminate samples. Gemini will match the exact colour and texture from your photos.</p>
 </div>
@@ -126,7 +147,7 @@
   <h2>Design Instructions</h2>
   <textarea id="promptBox" placeholder="Describe what you want — e.g:
 
-Apply the cream laminate on all wardrobe doors and the grey laminate on accent panels. Add a warm greige wall colour. Style it as a luxury master bedroom with a king bed, gold hardware, and soft ambient lighting."></textarea>
+Apply the cream laminate on all wardrobe doors and the grey laminate on accent panels. Add warm greige wall colour. Style as a luxury master bedroom with king bed, gold hardware, and soft ambient lighting."></textarea>
   <div class="char-hint">Be as specific as you like — wall colour, furniture, mood, lighting, style</div>
 </div>
 
@@ -140,11 +161,63 @@ Apply the cream laminate on all wardrobe doors and the grey laminate on accent p
 </div>
 
 <script>
-const API_KEY = 'AIzaSyBFgjKomkkM_CxsuhHGA3xyCOs5X_nn_6M';
+const MODEL = 'gemini-3.1-flash-image-preview';
+const LS_KEY = 'gemini_api_key';
 
-let room = null; // { base64, mime }
-let lams = [null, null, null, null]; // laminate slots
+let room = null;
+let lams = [null, null, null, null];
 
+// ── API key helpers ───────────────────────────────────────────────────────────
+function loadSavedKey() {
+  const saved = localStorage.getItem(LS_KEY);
+  if (saved) {
+    document.getElementById('apiKeyInput').value = saved;
+    setKeyStatus(saved);
+  }
+}
+
+function onKeyInput() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (val) {
+    localStorage.setItem(LS_KEY, val);
+    setKeyStatus(val);
+  } else {
+    localStorage.removeItem(LS_KEY);
+    setKeyStatus('');
+  }
+  checkReady();
+}
+
+function setKeyStatus(val) {
+  const el = document.getElementById('keyStatus');
+  if (val) {
+    el.className = 'key-status saved';
+    el.innerHTML = `Key saved in browser &nbsp;<button class="key-forget" onclick="forgetKey()">Forget</button>`;
+  } else {
+    el.className = 'key-status empty';
+    el.innerHTML = `No key saved — get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#4ade80">aistudio.google.com/apikey</a>`;
+  }
+}
+
+function forgetKey() {
+  localStorage.removeItem(LS_KEY);
+  document.getElementById('apiKeyInput').value = '';
+  setKeyStatus('');
+  checkReady();
+}
+
+function toggleKeyVis() {
+  const inp = document.getElementById('apiKeyInput');
+  const btn = event.target;
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide'; }
+  else { inp.type = 'password'; btn.textContent = 'Show'; }
+}
+
+function getKey() {
+  return document.getElementById('apiKeyInput').value.trim();
+}
+
+// ── Image upload helpers ──────────────────────────────────────────────────────
 function handleRoom(input) {
   const file = input.files[0];
   if (!file) return;
@@ -187,9 +260,10 @@ function readImage(file, cb) {
 }
 
 function checkReady() {
-  document.getElementById('genBtn').disabled = !room;
+  document.getElementById('genBtn').disabled = !(room && getKey());
 }
 
+// ── Prompt builder ────────────────────────────────────────────────────────────
 function buildParts() {
   const userPrompt = document.getElementById('promptBox').value.trim();
   const lamCount = lams.filter(Boolean).length;
@@ -206,20 +280,16 @@ TASK: Redesign the room shown in the first image into a completed luxury interio
   }
 
   if (userPrompt) {
-    systemText += `\n\nADDITIONAL DESIGN INSTRUCTIONS FROM USER:\n${userPrompt}`;
+    systemText += `\n\nADDITIONAL DESIGN INSTRUCTIONS:\n${userPrompt}`;
   }
 
   systemText += `\n\nRENDER QUALITY: Photorealistic, 4K, sharp focus, interior design magazine quality. The result must look like a completed, furnished room — not a construction site.`;
 
-  const parts = [{ text: systemText }];
+  const parts = [{ text: systemText }, { inlineData: { mimeType: room.mime, data: room.base64 } }];
 
-  // first image = room photo
-  parts.push({ inlineData: { mimeType: room.mime, data: room.base64 } });
-
-  // laminate images
   lams.forEach((lam, i) => {
     if (lam) {
-      parts.push({ text: `Laminate sample ${i + 1} — apply this exact colour and texture to the cupboard surfaces as instructed:` });
+      parts.push({ text: `Laminate sample ${i + 1} — apply this exact colour and texture to the cupboard surfaces:` });
       parts.push({ inlineData: { mimeType: lam.mime, data: lam.base64 } });
     }
   });
@@ -227,8 +297,10 @@ TASK: Redesign the room shown in the first image into a completed luxury interio
   return parts;
 }
 
+// ── Generate ──────────────────────────────────────────────────────────────────
 async function generate() {
-  if (!room) return;
+  const key = getKey();
+  if (!room || !key) return;
 
   const btn = document.getElementById('genBtn');
   const status = document.getElementById('status');
@@ -237,11 +309,11 @@ async function generate() {
   btn.disabled = true;
   resultCard.style.display = 'none';
   status.style.display = 'block';
-  status.innerHTML = '<span class="spinner"></span>Sending images to Gemini AI — this takes 20–40 seconds…';
+  status.innerHTML = '<span class="spinner"></span>Sending images to Gemini — this takes 20–40 seconds…';
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -279,8 +351,13 @@ async function generate() {
     status.innerHTML = `<div class="error">❌ ${err.message}</div>`;
   } finally {
     btn.disabled = false;
+    checkReady();
   }
 }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadSavedKey();
+checkReady();
 </script>
 </body>
 </html>
